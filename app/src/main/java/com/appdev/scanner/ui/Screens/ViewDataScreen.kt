@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -84,6 +85,8 @@ fun MainScreen(
 ) {
     val context = LocalContext.current
     val permissionState = rememberPermissionState(permission = Manifest.permission.CAMERA)
+    val permissionStateWriteAccess =
+        rememberPermissionState(permission = Manifest.permission.WRITE_EXTERNAL_STORAGE)
     var showRationale by remember(permissionState) {
         mutableStateOf(false)
     }
@@ -95,10 +98,6 @@ fun MainScreen(
         "Download as CSV file"
     )
 
-    val sheetState = rememberModalBottomSheetState()
-    var showSheet by remember {
-        mutableStateOf(false)
-    }
     val barcodeScannedRes =
         barcodeScanner.barCodeResults.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -182,7 +181,7 @@ fun MainScreen(
                                 "Download as XLS file" -> {
                                     qrCodeList?.let {
                                         scope.launch(Dispatchers.IO) {
-                                            val file = writeExcelFileToDownloads(it)
+                                            val file = writeExcelFileToDownloads(context, it)
                                             scope.launch(Dispatchers.Main) {
                                                 if (file != null) {
                                                     Toast
@@ -209,7 +208,7 @@ fun MainScreen(
                                 "Download as ODS file" -> {
                                     qrCodeList?.let {
                                         scope.launch(Dispatchers.IO) {
-                                            val file = generateOdsFile(it)
+                                            val file = generateOdsFile(context, it)
                                             scope.launch(Dispatchers.Main) {
                                                 if (file != null) {
                                                     Toast
@@ -236,7 +235,7 @@ fun MainScreen(
                                 "Download as CSV file" -> {
                                     qrCodeList?.let {
                                         scope.launch(Dispatchers.IO) {
-                                            val file = writeCsvFileToDownloads(it)
+                                            val file = writeCsvFileToDownloads(context, it)
                                             scope.launch(Dispatchers.Main) {
                                                 if (file != null) {
                                                     Toast
@@ -263,7 +262,7 @@ fun MainScreen(
                                 "Download as DOC file" -> {
                                     qrCodeList?.let {
                                         scope.launch(Dispatchers.IO) {
-                                            val file = writeDocFileToDownloads(it)
+                                            val file = writeDocFileToDownloads(context, it)
                                             scope.launch(Dispatchers.Main) {
                                                 if (file != null) {
                                                     Toast
@@ -305,6 +304,9 @@ fun MainScreen(
             } else if (permissionState.status.shouldShowRationale) {
                 showRationale = true
             } else {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                    permissionStateWriteAccess.launchPermissionRequest()
+                }
                 permissionState.launchPermissionRequest()
             }
         }, modifier = Modifier.padding(15.dp), containerColor = Color.DarkGray) {
@@ -412,7 +414,7 @@ fun singleEntry(
             shape = RoundedCornerShape(8.dp), // Adjust the corner radius as needed
             border = BorderStroke(
                 width = 2.dp,
-                color =  Color.Black
+                color = Color.Black
             ),
             colors = CardDefaults.cardColors(
                 containerColor = Color.LightGray
